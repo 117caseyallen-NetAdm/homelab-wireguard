@@ -1,0 +1,19 @@
+# WireGuard server — /etc/wireguard/wg0.conf
+# Runs in unprivileged Proxmox LXC (Debian 13), host provides wireguard + tun modules.
+# Routed design: NO PostUp MASQUERADE. The fabric routes 10.50.1.0/24 back here
+# via a static route on the distribution switch, redistributed into OSPF.
+
+[Interface]
+Address = 10.50.1.1/24
+ListenPort = 51820
+PrivateKey = <SERVER_PRIVATE_KEY>
+# 1380: inner traffic crosses a site-to-site IPsec tunnel (MTU 1400).
+# Default 1420 fragments or blackholes ("ping works, SSH hangs").
+MTU = 1380
+
+# laptop
+[Peer]
+PublicKey = <LAPTOP_PUBLIC_KEY>
+AllowedIPs = 10.50.1.10/32
+
+# Each additional client: new keypair, next /32, new [Peer] block.

@@ -1,0 +1,5 @@
+# Never commit real keys or live configs
+*.key
+wg0.conf
+*.conf
+!*.conf.example

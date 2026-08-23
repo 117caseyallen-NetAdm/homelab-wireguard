@@ -1,0 +1,21 @@
+# /etc/pve/lxc/101.conf — relevant lines
+# Container: Debian 13, unprivileged, WireGuard server
+#
+# net0 attaches to a stacked bridge (data20 = plain bridge on vmbr1.20,
+# vmbr1 is VLAN-aware on a dot1q trunk) — so NO tag= parameter needed.
+
+arch: amd64
+cores: 1
+memory: 512
+swap: 512
+hostname: CA-WG-LAB
+net0: name=eth0,bridge=data20,gw=10.20.2.1,ip=10.20.2.50/24,type=veth
+onboot: 1
+ostype: debian
+unprivileged: 1
+features: nesting=1
+
+# TUN passthrough — required for wg-quick in unprivileged LXC.
+# LXC reads this file only at container START (stop/start, not reboot-from-inside).
+lxc.cgroup2.devices.allow: c 10:200 rwm
+lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file

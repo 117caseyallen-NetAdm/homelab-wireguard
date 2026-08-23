@@ -1,0 +1,46 @@
+PA-440 — inbound WireGuard (PAN-OS)
+====================================
+
+Zones on this box: WAN (outside), WEST-LAN (inside), VPN (site-to-site IPsec — uninvolved here).
+<WAN_IF_IP> = the firewall's WAN-side interface address (ethernet1/1), the
+pre-NAT destination that the home router forwards to.
+
+Service object
+--------------
+  name:     UDP-51820
+  protocol: udp
+  port:     51820
+
+NAT rule "WG-inbound"
+---------------------
+  from:                  WAN
+  to:                    WAN          <- pre-NAT zone of the destination address
+  destination:           <WAN_IF_IP>
+  service:               UDP-51820
+  to-interface:          ethernet1/1
+  destination-translation:
+    translated-address:  10.20.2.50  (WireGuard host)
+    translated-port:     51820
+  (no source translation — server sees real client IPs)
+
+Security rule "WAN-to-WG"
+-------------------------
+  from:         WAN
+  to:           WEST-LAN             <- POST-NAT zone
+  destination:  <WAN_IF_IP>          <- PRE-NAT address  *** THE TRAP ***
+  service:      UDP-51820
+  action:       allow
+
+Why the trap: PAN-OS order of operations is
+  route lookup -> NAT *lookup* (determines post-NAT zone) ->
+  security policy (pre-NAT IPs, post-NAT zones) -> translation at egress.
+Writing the security rule with the post-NAT address (10.20.2.50) never matches:
+NAT hit counter climbs, session table stays empty, flow_policy_deny increments,
+interzone-default silently denies.
+
+Useful verification
+-------------------
+  show config diff                                        (empty = committed)
+  show session all filter destination-port 51820
+  show counter global filter severity drop delta yes      (run, cycle client, run again)
+  test routing fib-lookup virtual-router default ip 10.20.2.50

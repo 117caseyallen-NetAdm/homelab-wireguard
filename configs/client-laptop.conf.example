@@ -1,0 +1,18 @@
+# WireGuard client (Windows laptop)
+# Split tunnel: only lab subnets ride the VPN; general traffic stays local.
+
+[Interface]
+PrivateKey = <LAPTOP_PRIVATE_KEY>
+Address = 10.50.1.10/32
+MTU = 1380
+# DNS = <lab DC IP>   # add once AD/DNS exists; consider split-DNS scoped to the lab domain
+
+[Peer]
+PublicKey = <SERVER_PUBLIC_KEY>
+# Public-facing DDNS hostname — NEVER an inside/RFC1918 address.
+# Router-side DDNS keeps this pointed at the current residential WAN IP.
+Endpoint = vpn.example.com:51820
+# WEST data, EAST data, mgmt plane, transit/tunnel links
+AllowedIPs = 10.10.1.0/24, 10.20.2.0/24, 10.99.0.0/16, 10.255.0.0/16
+# Keeps the NAT mapping alive through home router + firewall
+PersistentKeepalive = 25

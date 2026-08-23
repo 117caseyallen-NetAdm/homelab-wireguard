@@ -1,0 +1,28 @@
+Cisco 3560CG-2 (WEST distribution) — return routing for the VPN pool
+====================================================================
+
+The WireGuard host is not anyone's default gateway, so without this, replies
+to 10.50.1.x follow the default route and die.
+
+conf t
+ ip route 10.50.1.0 255.255.255.0 10.20.2.50
+ ip prefix-list VPN-POOL seq 5 permit 10.50.1.0/24
+ route-map STATIC-TO-OSPF permit 10
+  match ip address prefix-list VPN-POOL
+ router ospf 1
+  redistribute static subnets route-map STATIC-TO-OSPF
+end
+copy run start
+
+The route-map limits redistribution to ONLY the VPN pool — future statics on
+this switch don't leak into OSPF as a side effect.
+
+Verification
+------------
+Local (originating switch):
+  show ip route 10.50.1.0            -> static, "Advertised by ospf 1"
+  show ip ospf database external     -> Type-5 LSA for 10.50.1.0/24, this RID
+
+Far site (across the IPsec tunnel) — the real proof:
+  show ip route 10.50.1.0            -> O E2 [110/20], learned from WEST RID
+  ping 10.20.2.50                    -> forward path check
