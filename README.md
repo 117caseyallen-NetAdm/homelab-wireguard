@@ -1,5 +1,16 @@
 # Homelab Remote-Access VPN — WireGuard, Routed Design
 
+> **Part of [CASEY-LAB](https://github.com/117caseyallen-NetAdm/casey-lab)** — a
+> dual-site, multi-vendor enterprise homelab. Start at the
+> [hub](https://github.com/117caseyallen-NetAdm/casey-lab) for the full topology
+> and build roadmap, or the [profile](https://github.com/117caseyallen-NetAdm)
+> for everything at once.
+>
+> **This documentation is living.** The VPN works today, but the lab keeps
+> growing around it — per-client firewall policy, split-DNS once the domain
+> controller lands, additional peers. Docs are revised as that happens; the
+> commit history is the changelog.
+
 Remote-access VPN into a dual-site homelab, built with WireGuard in an unprivileged
 Proxmox LXC behind a Palo Alto PA-440. VPN clients are **routed, not NATed** — the
 client pool is redistributed into OSPF so every device across both sites (including
