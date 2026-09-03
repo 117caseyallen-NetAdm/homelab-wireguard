@@ -51,18 +51,6 @@ name. The inside address is where the router forwards it *after* arrival. When
 "nothing anywhere sees any packets," read the client config first; the cheapest
 check is the one that requires no CLI.
 
-## The phantom DOWN interface
-
-**Symptom:** one second after `pct start`, the container's `eth0` was DOWN with no
-address. Config was correct, bridge membership was correct, service showed no errors.
-
-**Cause:** nothing. ifupdown2 inside the container took ~16 seconds to finish;
-the check ran at second one. A re-check after boot completed showed everything up.
-
-**Lesson:** timestamp the service (`systemctl status networking`) before declaring
-a failure. `Active: active (exited)` with a finish time *after* the failed check =
-you photographed the middle of boot.
-
 ## Missing port forward
 
 **Symptom:** zero packets at the server, no sessions at the firewall — genuinely
@@ -75,20 +63,58 @@ counters, confirm every hop in the chain *exists*. A checklist beats intuition:
 DNS resolves → forward exists (and is **UDP**) → NAT rule → security rule →
 committed (`show config diff` empty).
 
-## Shell traps (cost more time than the network did)
+## Key placement during a client key rotation
 
-* **Pasting a block after `su -` / `pct enter`** — everything after the first line
-  is swallowed; the subshell isn't reading stdin yet. Paste the shell-entering
-  command alone, wait for the prompt, then paste the rest.
-* **`su` vs `su -`** — plain `su` keeps the old user's PATH; `/usr/sbin` tools
-  (`sysctl`, `modprobe`, `bridge`) come back "command not found" and everything
-  redirected into `/etc` fails with permission denied. The login shell (`su -`)
-  fixes both. Related: "command not found" for admin tools plus pmxcfs
-  `ipcc_send_rec` errors on Proxmox = you're not root, not a broken box.
-* **Bracketed paste artifacts** — commands arriving as `^[[200~cmd~` fail
-  mysteriously. Type the command by hand, or disable with `printf '\e[?2004l'`.
-* **Case sensitivity** — `adduser Admin` then `usermod ... admin` are two
-  different users.
+**Symptom:** after rotating the laptop's keypair, the tunnel would not come up.
+Windows `ping` returned `General failure`, then later `Request timed out`, while
+`ping 8.8.8.8` worked normally.
+
+**Reading those two messages matters.** `General failure` means Windows could not
+send the packet at all — no route, interface not up. `Request timed out` means
+packets are leaving and nothing is coming back. The symptom changing from the
+first to the second was progress: the interface had come up, and the problem had
+moved to the handshake.
+
+On the server, `wg show` listed the peer with **no `endpoint`, no `latest
+handshake`, and no `transfer`** — meaning the server had never accepted this
+client, not once.
+
+**Cause:** the wrong key in the wrong `[Peer]` block. Each `[Peer]` section
+describes the *other* machine:
+
+| File | Section | Holds |
+|---|---|---|
+| `wg0.conf` (server) | `[Interface] PrivateKey` | server's private key |
+| `wg0.conf` (server) | `[Peer] PublicKey` | **client's** public key |
+| client config | `[Interface] PrivateKey` | client's private key |
+| client config | `[Peer] PublicKey` | **server's** public key |
+
+Your own public key never belongs in your own `[Peer]` block. The client's public
+key is never stored on the client at all — WireGuard derives it from the private
+key and displays it in the UI.
+
+**WireGuard is silent by design when it cannot authenticate a peer.** No error,
+no rejection, no log line. A key mismatch and a firewall blocking the path look
+identical from the client, which is excellent security and difficult
+troubleshooting.
+
+**Recovering keys without guessing:**
+
+```bash
+wg show wg0 public-key             # server's public key -> client's [Peer]
+wg show wg0 peers                  # what the server expects -> must match the
+                                   # public key the client UI displays
+cat <private>.key | wg pubkey      # derive a public key from any private key
+```
+
+A public key is always recoverable from its private key, so it cannot be
+permanently lost. Only private keys are irreplaceable.
+
+**And config changes need an explicit reload on both ends** —
+`systemctl restart wg-quick@wg0` on the server (or `wg syncconf wg0 <(wg-quick
+strip wg0)` to apply without dropping the interface), and deactivate/reactivate
+the tunnel in the client. Editing a config while the tunnel is running changes
+nothing.
 
 ## Noise worth recognizing (not chasing)
 

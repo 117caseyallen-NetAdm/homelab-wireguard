@@ -5,7 +5,11 @@
 PrivateKey = <LAPTOP_PRIVATE_KEY>
 Address = 10.50.1.10/32
 MTU = 1380
-# DNS = <lab DC IP>   # add once AD/DNS exists; consider split-DNS scoped to the lab domain
+DNS = 10.20.2.5      # the domain controller. Clients resolve casey.corp through
+                     # it; everything else goes out via its forwarders. Never
+                     # add a public resolver as a secondary here - it will
+                     # answer NXDOMAIN for lab records and produce intermittent
+                     # failures that vanish on retry.
 
 [Peer]
 PublicKey = <SERVER_PUBLIC_KEY>

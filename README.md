@@ -1,29 +1,27 @@
 # Homelab Remote-Access VPN — WireGuard, Routed Design
 
-> **Part of [CASEY-LAB](https://github.com/117caseyallen-NetAdm/casey-lab)** — a
-> dual-site, multi-vendor enterprise homelab. Start at the
-> [hub](https://github.com/117caseyallen-NetAdm/casey-lab) for the full topology
-> and build roadmap, or the [profile](https://github.com/117caseyallen-NetAdm)
-> for everything at once.
->
-> **This documentation is living.** The VPN works today, but the lab keeps
-> growing around it — per-client firewall policy, split-DNS once the domain
-> controller lands, additional peers. Docs are revised as that happens; the
-> commit history is the changelog.
+Part of [CASEY-LAB](https://github.com/117caseyallen-NetAdm/casey-lab), a
+dual-site multi-vendor homelab. The [hub](https://github.com/117caseyallen-NetAdm/casey-lab)
+has the full topology; the [profile](https://github.com/117caseyallen-NetAdm)
+indexes everything.
 
 Remote-access VPN into a dual-site homelab, built with WireGuard in an unprivileged
-Proxmox LXC behind a Palo Alto PA-440. VPN clients are **routed, not NATed** — the
-client pool is redistributed into OSPF so every device across both sites (including
-gear on the far side of a site-to-site IPsec tunnel) can reach clients by their real
+Proxmox LXC behind a Palo Alto PA-440. VPN clients are **routed, not NATed**: the
+client pool is redistributed into OSPF so every device across both sites, including
+gear on the far side of a site-to-site IPsec tunnel, can reach clients by their real
 tunnel IPs.
 
-Multi-vendor path: **WireGuard → TP-Link Deco → Palo Alto PAN-OS → Cisco IOS → (IPsec) → Juniper Junos → Cisco IOS → Arista EOS**
+Multi-vendor path: WireGuard → TP-Link Deco → Palo Alto PAN-OS → Cisco IOS →
+(IPsec) → Juniper Junos → Cisco IOS → Arista EOS
+
+Full build sequence in [docs/build-notes.md](docs/build-notes.md); what went
+wrong is in [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ## Why this design
 
 | Decision | Choice | Reason |
 |---|---|---|
-| VPN termination | WireGuard in LXC | GlobalProtect ruled out: unlicensed gray-market PA-440 can't download the GP client package, and an unpatchable internet-facing GP portal is a real risk (CVE-2024-3400 class) |
+| VPN termination | WireGuard in LXC | GlobalProtect ruled out. The PA-440 is second-hand without an active support licence, so it cannot download the GP client package or receive content updates — and an internet-facing portal that cannot be patched is a real risk (CVE-2024-3400 class) |
 | Client addressing | Routed pool `10.50.1.0/24`, no MASQUERADE | Per-client source IPs stay visible fleet-wide → real per-client firewall policy and clean logs |
 | Return routing | Static route + OSPF redistribution (route-map filtered) | Far site learns the pool across the IPsec tunnel; no NAT hacks |
 | MTU | 1380 on both ends | Inner traffic crosses a site-to-site IPsec tunnel (MTU 1400); default 1420 fragments or blackholes |
