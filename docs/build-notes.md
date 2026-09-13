@@ -167,5 +167,6 @@ management profile.
 ## Future work
 
 * Per-client firewall policy on the PA (the payoff of the routed design)
-* AD/DNS DC → set client `DNS =` and add split-DNS for the lab domain
+* Split-DNS for the lab domain — the client `DNS =` already points at the domain
+  controller, see [`configs/client-laptop.conf.example`](../configs/client-laptop.conf.example)
 * Additional peers: phone, second laptop
