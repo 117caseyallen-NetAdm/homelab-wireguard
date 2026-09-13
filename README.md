@@ -53,7 +53,7 @@ flowchart TD
     H -.-> R -.-> E
 ```
 
-## Return path (the step everyone skips)
+## Return path
 
 An inbound tunnel is useless if nothing can route back to the clients. The WireGuard
 host is **not** the default gateway for any subnet, so replies to `10.50.1.x` would
@@ -72,7 +72,9 @@ router ospf 1
 
 The route-map matters: it redistributes *only* the VPN pool, not every static the
 switch might ever carry. Verified as a Type-5 LSA in the LSDB and installed as
-`O E2` on the far-site switch across the IPsec tunnel.
+`O E2` on the far-site switch across the IPsec tunnel — the full chain (origin
+route, the LSA itself, far-side installation) is captured verbatim in the hub's
+[verification.md](https://github.com/117caseyallen-NetAdm/casey-lab/blob/main/docs/verification.md#3-the-vpn-pool-is-redistributed-into-ospf-and-reachable-from-the-far-site).
 
 ## Repo layout
 
@@ -81,7 +83,7 @@ configs/    sanitized configs for every hop (WireGuard, LXC, PAN-OS, IOS)
 docs/       build notes + the debugging war stories
 ```
 
-## The lesson worth the price of admission
+## PAN-OS: pre-NAT address, post-NAT zone
 
 PAN-OS evaluates security policy against the **pre-NAT destination address** but the
 **post-NAT destination zone**. A dst-NAT security rule written with the post-NAT
